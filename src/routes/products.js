@@ -112,7 +112,7 @@ router.put('/:id/suppliers/:supplierId', async (req, res) => {
     res.json(rows[0]);
 });
 
-router.delete('/:id/suppliers/supplierId', async (req, res) => {
+router.delete('/:id/suppliers/:supplierId', async (req, res) => {
     const result = await pool.query(
         'DELETE FROM product_suppliers WHERE product_id = $1 AND supplier_id = $2',
         [req.params.id, req.params.supplierId]
