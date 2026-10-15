@@ -26,6 +26,11 @@ app.get('/', (req, res) => {
             'POST   /categories',
             'GET    /suppliers',
             'POST   /suppliers',
+            'GET    /products/:id/suppliers',
+            'POST   /products/:id/suppliers',
+            'PUT    /products/:id/suppliers/:supplierId',
+            'DELETE /products/:id/suppliers/:supplierId',
+            'GET    /suppliers/:id/products',
         ],
     });
 });

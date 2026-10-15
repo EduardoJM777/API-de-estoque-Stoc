@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS products (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
     category_id INTEGER REFERENCES categories(id),
-    supplier_id INTEGER REFERENCES suppliers(id),
     price NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (price >= 0),
     quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
     min_quantity INTEGER NOT NULL DEFAULT 0,
@@ -29,6 +28,18 @@ CREATE TABLE IF NOT EXISTS movements (
     reason TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS product_suppliers (
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT,
+    cost_price NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (cost_price >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (product_id, supplier_id)
+);
+
+
+
+CREATE INDEX IF NOT EXISTS idx_product_suppliers_supplier_id ON product_suppliers(supplier_id);
 
 
 
@@ -54,3 +65,17 @@ SELECT p.id, p.name, p.quantity, p.min_quantity, c.name AS category
 FROM products p
 LEFT JOIN categories c ON c.id = p.category_id
 WHERE p.quantity < p.min_quantity;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'products' AND column_name = 'supplier_id'
+    ) THEN
+      INSERT INTO product_suppliers (product_id, supplier_id)
+        SELECT id, supplier_id FROM products WHERE supplier_id IS NOT NULL
+        ON CONFLICT DO NOTHING;
+      ALTER TABLE products DROP COLUMN supplier_id;
+    END IF;
+END $$;

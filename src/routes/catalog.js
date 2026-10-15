@@ -35,4 +35,16 @@ router.post('/suppliers', async (req, res) => {
     res.status(201).json(rows[0]);
 });
 
+router.get('/suppliers/:id/products', async (req, res) => {
+    const { rows } = await pool.query(
+        `SELECT p.id, p.name, p.quantity, ps.cost_price
+         FROM product_suppliers ps
+         JOIN products p ON p.id = ps.product_id
+         WHERE ps.supplier_id = $1
+         ORDER BY p.name`,
+        [req.params.id] 
+    );
+    res.json(rows);
+});
+
 module.exports = router;
