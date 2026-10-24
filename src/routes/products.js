@@ -37,12 +37,13 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
     const { name, category_id, price, quantity, min_quantity } = req.body;
     if (!name) return res.status(400).json({ error: 'Nome é obrigatório' });
+    if (!category_id) return res.status(400).json({ error: 'category_id é obrigatório' });
 
     const { rows } = await pool.query(
         `INSERT INTO products (name, category_id, price, quantity, min_quantity)
         VALUES ($1, $2, $3, $4, $5)
         RETURNING *`,
-        [name, category_id || null, price || 0, quantity || 0, min_quantity || 0]
+        [name, category_id, price || 0, quantity || 0, min_quantity || 0]
     );
     res.status(201).json(rows[0]);
 });

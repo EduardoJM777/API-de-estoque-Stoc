@@ -13,12 +13,14 @@ CREATE TABLE IF NOT EXISTS suppliers (
 CREATE TABLE IF NOT EXISTS products (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
-    category_id INTEGER REFERENCES categories(id),
+    category_id INTEGER NOT NULL REFERENCES categories(id),
     price NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (price >= 0),
     quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
     min_quantity INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE products ALTER COLUMN category_id SET NOT NULL;
 
 CREATE TABLE IF NOT EXISTS movements (
     id SERIAL PRIMARY KEY,
