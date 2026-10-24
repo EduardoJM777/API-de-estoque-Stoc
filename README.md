@@ -42,9 +42,13 @@ automaticamente na inicialização (o `schema.sql` é idempotente).
 
 | Relacionamento | Cardinalidade | Ao excluir o registro pai |
 |---|---|---|
-| Categoria → Produto (`products.category_id`, opcional) | 1:N | Bloqueia a exclusão |
+| Categoria → Produto (`products.category_id`, obrigatório) | 1:N | Bloqueia a exclusão |
 | Produto ↔ Fornecedor (`product_suppliers`) | N:N | Produto: apaga as associações (`CASCADE`). Fornecedor: bloqueia (`RESTRICT`) |
 | Produto → Movimentação (`movements.product_id`, obrigatório) | 1:N | Bloqueia a exclusão |
+
+Todo produto pertence a uma categoria: é preciso cadastrar ao menos uma
+categoria antes de criar produtos, e `POST /products` sem `category_id` retorna
+400. No `PUT`, omitir `category_id` mantém a categoria atual.
 
 Um produto pode ter vários fornecedores e um fornecedor pode atender vários
 produtos. A chave primária composta `(product_id, supplier_id)` impede a mesma
@@ -67,6 +71,10 @@ Se o banco foi criado por uma versão anterior (quando `products` tinha a coluna
 `supplier_id`), a inicialização copia cada vínculo para `product_suppliers` e
 remove a coluna, sem perder produtos, saldos ou histórico. Em banco novo, esse
 passo não faz nada, e reiniciar o servidor várias vezes é seguro.
+
+Da mesma forma, em um banco criado antes de a categoria ser obrigatória, a
+inicialização torna `products.category_id` `NOT NULL`. Para isso, todos os
+produtos já cadastrados precisam ter categoria.
 
 ## Endpoints
 
