@@ -3,7 +3,13 @@ const { pool } = require('../db');
 
 const router = express.Router();
 
-
+function nonNegativeIntError(field, value) {
+    if (value === undefined || value === null) return null;
+    if (!Number.isInteger(value) || value < 0 || value > 2147483647) {
+        return `${field} deve ser um inteiro entre 0 e 2147483647`;
+    }
+    return null;
+}
 
 router.get('/', async (req, res) => {
     const { rows } = await pool.query(`
@@ -39,17 +45,48 @@ router.post('/', async (req, res) => {
     if (!name) return res.status(400).json({ error: 'Nome é obrigatório' });
     if (!category_id) return res.status(400).json({ error: 'category_id é obrigatório' });
 
-    const { rows } = await pool.query(
-        `INSERT INTO products (name, category_id, price, quantity, min_quantity)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING *`,
-        [name, category_id, price || 0, quantity || 0, min_quantity || 0]
-    );
-    res.status(201).json(rows[0]);
+    const minError = nonNegativeIntError('min_quantity', min_quantity);
+    if (minError) return res.status(400).json({ error: minError });
+    const qtyError = nonNegativeIntError('quantity', quantity);
+    if (qtyError) return res.status(400).json({ error: qtyError });
+
+    const initialQuantity = quantity ?? 0;
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const { rows } = await client.query(
+            `INSERT INTO products (name, category_id, price, quantity, min_quantity)
+            VALUES ($1, $2, $3, 0, $4)
+            RETURNING id`,
+            [name, category_id, price || 0, min_quantity || 0]
+        );
+        const id = rows[0].id;
+
+        if (initialQuantity > 0) {
+            await client.query(
+                `INSERT INTO movements (product_id, type, quantity, reason)
+                VALUES ($1, 'IN', $2, 'Estoque inicial')`,
+                [id, initialQuantity]
+            );
+        }
+
+        const { rows: created } = await client.query('SELECT * FROM products WHERE id = $1', [id]);
+        await client.query('COMMIT');
+        res.status(201).json(created[0]);
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    } finally {
+        client.release();
+    }
 });
 
 router.put('/:id', async (req, res) => {
     const { name, category_id, price, min_quantity } = req.body;
+    const minError = nonNegativeIntError('min_quantity', min_quantity);
+    if (minError) return res.status(400).json({ error: minError });
     
     const { rows } = await pool.query(
         `UPDATE products

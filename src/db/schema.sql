@@ -16,11 +16,23 @@ CREATE TABLE IF NOT EXISTS products (
     category_id INTEGER NOT NULL REFERENCES categories(id),
     price NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (price >= 0),
     quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
-    min_quantity INTEGER NOT NULL DEFAULT 0,
+    min_quantity INTEGER NOT NULL DEFAULT 0 CONSTRAINT products_min_quantity_check CHECK (min_quantity >= 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE products ALTER COLUMN category_id SET NOT NULL;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'products_min_quantity_check'
+            AND conrelid = 'products'::regclass
+    ) THEN
+      UPDATE products SET min_quantity = 0 WHERE min_quantity < 0;
+      ALTER TABLE products ADD CONSTRAINT products_min_quantity_check CHECK (min_quantity >= 0);
+    END IF;
+END $$;      
 
 CREATE TABLE IF NOT EXISTS movements (
     id SERIAL PRIMARY KEY,
